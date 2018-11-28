@@ -5,18 +5,16 @@
 
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
-// These #defines make it easy to set the backlight color
-#define RED 0x1
-#define YELLOW 0x3
-#define GREEN 0x2
-#define TEAL 0x6
-#define BLUE 0x4
-#define VIOLET 0x5
-#define WHITE 0x7
+// Define the switch pin
+#define switchInput 6
 
-// DEFINING OUTPUTS USED BY THE ROTARY ENCODER 
-#define outputA 6
-#define outputB 7
+#include <Encoder.h>
+Encoder myEnc(2, 3);
+
+//
+//// DEFINING OUTPUTS USED BY THE ROTARY ENCODER 
+//#define outputA 2
+//#define outputB 3
 #define buttonInput 8
 // DEFINING PUMP LIBRARIES AND VARIABLES
 #include <Servo.h>
@@ -30,17 +28,16 @@ int amplitude;//amplitude of fluctuation of power level: max power value = avgVa
 #define PUMPPIN 9    //peristaltic pump control pin, connect to arduino digital pin 9
 
 int power;//power level of pump, between 90 and 180
-
 int previousBps;
 
 void setup() { 
-  // Configuring the rotary encoder pin to read 
-  pinMode (outputA,INPUT);
-  pinMode (outputB,INPUT);
 
   // Setting pin 13 as just a 5 V power supply since all other power sources on the ARDUINO are being used
   pinMode (13, OUTPUT);
   digitalWrite(13, HIGH);
+
+  // Switch input
+  pinMode(switchInput, INPUT);
 
   // Configuring initial LCD Screen output
   lcd.begin(0, 0);
@@ -48,6 +45,8 @@ void setup() {
 
   // Setting up button input button
   pinMode(buttonInput, INPUT_PULLUP);
+
+  // 
   
   // Configuring pump level
   myservo.attach(PUMPPIN);//initializes peristaltic control pin
@@ -57,13 +56,13 @@ void setup() {
   avgValue = 135;//initializes avgValue
   amplitude = 180-avgValue;//initializes amplitude
 
-  
+  // Beginning the Serial Print
  Serial.begin (9600);
 } 
 
-int counter = 60;
-bool prevA = 1, prevB = 1;
+volatile int counter = 60;
 
+///////////////////////////////////////////////////////////////////////////////////////////
 int pushEvent; // digital input value from pin 13. Due to the Pull up resistor maintaing a constant 5 V in the pin , a value of LOW means 
                // the button is currently being pushed as the button's closing offers a path to ground where as HIGH means the button has offered no additional path for the voltage and
                // the reading is stuck at 5V. 
@@ -72,46 +71,33 @@ int mode = 1; // This integer corresponds to the mode of the system. If the mode
               // the green light is off and the red light is on. 
 
 int currentBPM = 100;
+//////////////////////////////////////////////////////////////////////////////////////////////
+long oldPosition  = -999;
+int pinState;
+
 void loop() {
 
 
+  long newPosition = myEnc.read();
+  if (newPosition != oldPosition) {
+    oldPosition = newPosition;
+//    Serial.println(newPosition);
+    counter = newPosition;
+  }
 
+  // Read and print the current switch state
+  pinState = digitalRead(switchInput);
+  Serial.println(pinState);
+
+  
   // We start by reading the pushEvent on every loop. If the user does not push the button, the pin will read HIGH, and if the user pushes the button, then the pin will read LOW 
   pushEvent = digitalRead(buttonInput);// read the push button value
 
-  // Here we check if the user pushed the pin (pushEvent == Low) and also that if the user is not holding down the pin via the statusMemory. As the statusMemory will hold information on the
-  // state of the digital input from the last loop iteration, if it reads HIGH, then that means that a few seconds ago the pin was not being pushed and therefore this change to the state is novel and should
-  // be recorded. 
-  if(pushEvent == LOW && statusMemory == HIGH){
-//    mode = 1 - mode; // Flip the value of the mode from 1 to 0 if it was 1 before and from 0 to 1 if it was 0 before. This toggles whether the red or green light is on. 
-//    delay(100); // Delay the loop for 100 ms. This gives time for the user to lift their finger from the button. 
-  }    
-
-  // Store the value of the digitalInput pushEvent 100 seconds after the pushing. If this reads 1, this indicates the user has succesfully let go of the button. 
-  statusMemory = pushEvent;
-
   // If the circuit is in mode 1, the greenLight should be turne don and the red light will be turned off. 
   if(pushEvent == LOW){
-    Serial.println("Mode 1");
     lcd.clear();
     currentBPM = counter;
-  }else{
-    // If the circuit is is not in mode 1, meaning it is in mode 0, then turn off the green light and turn on the re light instead. 
-    Serial.println("Mode 2");
-  }     
-
-  bool A = digitalRead(outputA), B = digitalRead(outputB);
-
-  if (B != prevB) counter += (B-prevB) * (A ? +1 : -1);
-  else if (A != prevA) counter += (A-prevA) * (B ? -1 : +1);
-  
-  prevA = A;
-  prevB = B;
-
-  // PRINTING THE VALUES OF THE COUNTER VARIABLE TO THE MONITOR 
-  //  Serial.println(counter);
-  // Serial.print("Position: ");
-  // Serial.println(counter);
+  }   
 
   
   bps = currentBPM/60.0;
@@ -140,7 +126,6 @@ void loop() {
   }
 
   x = a * millis();//for each run through of the loop, x is reset based on the current time value
-  Serial.println(x);
   myservo.write(avgValue + (amplitude * sin(x)));//sets pump power to desired value based on avgValue, amplitude, and time passed   
 
   previousBps = bps;
