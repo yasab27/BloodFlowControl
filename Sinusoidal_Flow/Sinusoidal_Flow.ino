@@ -15,7 +15,7 @@ Encoder myEnc(2, 3);
 //// DEFINING OUTPUTS USED BY THE ROTARY ENCODER
 //#define outputA 2
 //#define outputB 3
-#define buttonInput 8
+#define buttonInput 4
 // DEFINING PUMP LIBRARIES AND VARIABLES
 #include <Servo.h>
 
@@ -31,7 +31,7 @@ int power;//power level of pump, between 90 and 180
 int previousBps;
 
 void setup() {
-
+  
   // Setting pin 13 as just a 5 V power supply since all other power sources on the ARDUINO are being used
   pinMode (13, OUTPUT);
   digitalWrite(13, HIGH);
@@ -40,12 +40,12 @@ void setup() {
   pinMode(switchInput, INPUT);
 
   // Configuring initial LCD Screen output
-  lcd.begin(0, 0);
+  lcd.begin(16, 2);
+  lcd.setCursor(0,0);
   lcd.print("NBPM:");
 
   // Setting up button input button
   pinMode(buttonInput, INPUT_PULLUP);
-
   //
 
   // Configuring pump level
@@ -53,14 +53,14 @@ void setup() {
   bps = 1.5; //user sets beats per second
   a = (.001) * bps * 2 * PI;//initializes constant using bps
   x = a * millis();//initializes x
-  avgValue = 135;//initializes avgValue
+  avgValue = 160;//initializes avgValue
   amplitude = 180 - avgValue; //initializes amplitude
 
   // Beginning the Serial Print
-  Serial.begin (9600);
+  //Serial.begin (9600);
 }
 
-volatile int counter = 60;
+volatile float counter = 60;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 int pushEvent; // digital input value from pin 13. Due to the Pull up resistor maintaing a constant 5 V in the pin , a value of LOW means
@@ -73,6 +73,8 @@ int mode = 1; // This integer corresponds to the mode of the system. If the mode
 int currentBPM = 100;
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+int previousCounter;
+
 int currentFlowRate;
 
 long oldPosition  = -999;
@@ -81,22 +83,19 @@ long oldPosition  = -999;
 int switchPinState;
 int previousPinState;
 
-int previousPower;
-
+int previousFlowRate;
 void loop() {
 
-
-  long newPosition = myEnc.read();
-  if (newPosition != oldPosition) {
-    oldPosition = newPosition;
-    //    Serial.println(newPosition);
-    counter = newPosition;
-  }
-
+     long newPosition = myEnc.read();
+    if (newPosition != oldPosition) {
+      oldPosition = newPosition;
+      Serial.println(newPosition);
+      counter = newPosition;
+    }
   // Read and print the current switch state
   if (digitalRead(switchInput) != previousPinState) {
     // SET DEFAULT VALUES FOR CHANGE
-    counter = 60;
+    counter = 20;
     switchPinState = digitalRead(switchInput);
     Serial.println(switchPinState);
     lcd.clear();
@@ -105,6 +104,11 @@ void loop() {
 
   if (switchPinState == 1)
   {
+
+    // Read the value of the encoder 
+
+
+    
     // PULSATILE FLOW
     // We start by reading the pushEvent on every loop. If the user does not push the button, the pin will read HIGH, and if the user pushes the button, then the pin will read LOW
     pushEvent = digitalRead(buttonInput);// read the push button value
@@ -115,74 +119,74 @@ void loop() {
       currentBPM = counter;
 
       lcd.setCursor(0, 0);
-      lcd.print("NBPM:");
+      lcd.print("New BPM:");
 
-      lcd.setCursor(5, 0);
+      lcd.setCursor(8, 0);
       //  lcd.clear();
       //  outputString = strcat("BPM", counter);
-      lcd.print(counter);
+      lcd.print(int(counter));
 
       if (counter < 100)
       {
-        lcd.setCursor(7, 0);
+        lcd.setCursor(10, 0);
         lcd.print(" ");
       }
 
-      lcd.setCursor(8, 0);
-      lcd.print("CBPM:");
-      lcd.setCursor(13, 0);
+      lcd.setCursor(0, 1);
+      lcd.print("Cur. BPM:");
+      lcd.setCursor(9, 1);
       lcd.print(currentBPM);
-
+      //      Serial.println(currentBPM);
     }
 
 
     bps = currentBPM / 60.0;
-    a = (1.001) * bps * 2 * PI;
-    if (bps != previousBps)
+//    Serial.println(bps);
+    a = (0.001) * bps * 2 * PI;
+    if (counter != previousCounter)
     {
       lcd.setCursor(0, 0);
-      lcd.print("NBPM:");
+      lcd.print("New BPM:");
 
-      lcd.setCursor(5, 0);
+      lcd.setCursor(8, 0);
       //  lcd.clear();
       //  outputString = strcat("BPM", counter);
-      lcd.print(counter);
+      lcd.print(int(counter));
 
       if (counter < 100)
       {
-        lcd.setCursor(7, 0);
-        lcd.print(" ");
+         lcd.setCursor(10, 0);
+         lcd.print(" ");
       }
 
-      lcd.setCursor(8, 0);
-      lcd.print("CBPM:");
-      lcd.setCursor(13, 0);
+      lcd.setCursor(0, 1);
+      lcd.print("Cur. BPM:");
+      lcd.setCursor(9, 1);
       lcd.print(currentBPM);
 
-     
+
     }
 
     x = a * millis();//for each run through of the loop, x is reset based on the current time value
+    Serial.println(avgValue + (amplitude * sin(x)));
     myservo.write(avgValue + (amplitude * sin(x)));//sets pump power to desired value based on avgValue, amplitude, and time passed
 
-    previousBps = bps;
+    previousCounter = counter;
   } else {
-    power = counter;
-    
+
     // We start by reading the pushEvent on every loop. If the user does not push the button, the pin will read HIGH, and if the user pushes the button, then the pin will read LOW
     pushEvent = digitalRead(buttonInput);// read the push button value
-
+    int currentFlowMinute;
     // If the circuit is in mode 1, the greenLight should be turne don and the red light will be turned off.
     if (pushEvent == LOW) {
       lcd.clear();
-      currentFlowRate = counter;
+      currentFlowMinute = counter;
+      currentFlowRate = (counter/60.0 + .7999) / .008018;
 
       lcd.setCursor(0, 0);
       lcd.print("NFLR:");
 
       lcd.setCursor(5, 0);
-      //  lcd.clear();
-      //  outputString = strcat("BPM", counter);
       lcd.print(counter);
 
       if (counter < 100)
@@ -194,12 +198,10 @@ void loop() {
       lcd.setCursor(8, 0);
       lcd.print("CFLR:");
       lcd.setCursor(13, 0);
-      lcd.print(counter);
+      lcd.print(currentFlowMinute);
     }
 
-
-    power = counter;
-    if (power != previousPower)
+    if (((counter/60.0 + .7999) / .008018) != previousFlowRate)
     {
       lcd.setCursor(0, 0);
       lcd.print("NFLR:");
@@ -207,7 +209,7 @@ void loop() {
       lcd.setCursor(5, 0);
       //  lcd.clear();
       //  outputString = strcat("BPM", counter);
-      lcd.print(power);
+      lcd.print(counter);
 
       if (counter < 100)
       {
@@ -218,12 +220,12 @@ void loop() {
       lcd.setCursor(8, 0);
       lcd.print("CFLR:");
       lcd.setCursor(13, 0);
-      lcd.print(currentFlowRate);
+      lcd.print(currentFlowMinute);
     }
-    
-    myservo.write(power);   //set motor to speed
 
-    previousPower = power;
+    myservo.write(currentFlowRate);   //set motor to speed
+
+    previousFlowRate = currentFlowRate;
   }
 
 }
