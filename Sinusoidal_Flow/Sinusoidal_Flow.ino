@@ -184,43 +184,49 @@ void loop() {
       currentFlowRate = (counter/60.0 + .7999) / .008018;
 
       lcd.setCursor(0, 0);
-      lcd.print("NFLR:");
+      lcd.print("New FLR:");
 
-      lcd.setCursor(5, 0);
-      lcd.print(counter);
+      lcd.setCursor(8, 0);
+      lcd.print(int(counter));
 
       if (counter < 100)
       {
-        lcd.setCursor(7, 0);
+        lcd.setCursor(10, 0);
         lcd.print(" ");
       }
 
-      lcd.setCursor(8, 0);
-      lcd.print("CFLR:");
-      lcd.setCursor(13, 0);
-      lcd.print(currentFlowMinute);
+      lcd.setCursor(0, 1);
+      lcd.print("Cur FLR:");
+      lcd.setCursor(8, 1);
+      lcd.print(int(currentFlowMinute));
     }
 
     if (((counter/60.0 + .7999) / .008018) != previousFlowRate)
     {
       lcd.setCursor(0, 0);
-      lcd.print("NFLR:");
+      lcd.print("New FLR:");
 
-      lcd.setCursor(5, 0);
+      lcd.setCursor(8, 0);
       //  lcd.clear();
       //  outputString = strcat("BPM", counter);
-      lcd.print(counter);
+      lcd.print(int(counter));
 
       if (counter < 100)
       {
-        lcd.setCursor(7, 0);
+        lcd.setCursor(10, 0);
         lcd.print(" ");
       }
 
-      lcd.setCursor(8, 0);
-      lcd.print("CFLR:");
-      lcd.setCursor(13, 0);
-      lcd.print(currentFlowMinute);
+      lcd.setCursor(0,1);
+      lcd.print("Cur FLR:");
+      lcd.setCursor(8, 1);
+      lcd.print(int(currentFlowMinute));
+
+      lcd.setCursor(12,0);
+      lcd.print("mL/m");
+
+      lcd.setCursor(12,1);
+      lcd.print("mL/m");
     }
 
     myservo.write(currentFlowRate);   //set motor to speed
